@@ -1,14 +1,20 @@
+# Jeśli chcemy przetestować wybrany katalog, należy podać jego ścieżkę jako argument
+# Domyślnie sprawdzamy cały folder ./data/
+
 import glob
 import os
+import sys
 
-root = "./data/dataA/*"
+root = "./data/**/"
 model_filename = "correct.txt"
 result_filename = "result.txt"
 
 correct = 0
 wrong = 0
 
-model_files = glob.glob(os.path.join(root, model_filename))
+root = "{}/**/".format(sys.argv[1]) if len(sys.argv) > 1 else root
+
+model_files = glob.glob(os.path.join(root, model_filename), recursive=True)
 
 for model_name in model_files:
     try:
@@ -25,5 +31,8 @@ for model_name in model_files:
     except Exception as e:
         print(e)
 
-print("{0} / {1} images are correct - {2:0.2f}%. "
-      .format(correct, correct + wrong, (float(correct) / (correct + wrong)) * 100))
+try:
+    print("{0} / {1} images are correct - {2:0.2f}%. "
+        .format(correct, correct + wrong, (float(correct) / (correct + wrong)) * 100))
+except Exception as e:
+    print(e)
