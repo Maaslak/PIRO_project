@@ -5,6 +5,9 @@ import glob
 import os
 import sys
 import main
+import warnings
+
+warnings.filterwarnings("ignore")
 
 root = "./data/**/"
 model_filename = "correct.txt"
@@ -15,6 +18,13 @@ wrong = 0
 root = "{}/**/".format(sys.argv[1]) if len(sys.argv) > 1 else root
 
 correct_files = glob.glob(os.path.join(root, model_filename), recursive=True)
+
+toolbar_width = len(correct_files)
+
+# setup toolbar
+sys.stdout.write("[%s]" % (" " * toolbar_width))
+sys.stdout.flush()
+sys.stdout.write("\b" * (toolbar_width+1)) # return to start of line, after '['
 
 for correct_file in correct_files:
     set_dir = os.path.dirname(correct_file)
@@ -30,9 +40,11 @@ for correct_file in correct_files:
                     wrong += 1
     except Exception as e:
         print(e)
+    sys.stdout.write("▯")
+    sys.stdout.flush()
 
 try:
-    print("{0} / {1} images are correct - {2:0.2f}%. "
+    print("\n{0} / {1} images are correct - {2:0.2f}%. "
           .format(correct, correct + wrong, (float(correct) / (correct + wrong)) * 100))
 except Exception as e:
     print(e)
