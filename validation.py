@@ -1,5 +1,5 @@
-# Jeśli chcemy przetestować wybrany katalog, należy podać jego ścieżkę jako argument
-# Domyślnie sprawdzamy cały folder ./data/
+# Default dir is ./data/
+# You can change it by entering the first parameter
 
 import glob
 import os

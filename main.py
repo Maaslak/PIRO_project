@@ -12,6 +12,11 @@ import cv2
 
 SHOW_PLT = False
 
+# Weights
+K_DISTANCE = 1
+K_HU = 1
+K_POLYNOMIAL = 1
+
 
 def lines_to_vec(lines):
     return np.array([np.array(line[1])-np.array(line[0]) for line in lines])
@@ -84,17 +89,30 @@ class VectorizedImage(object):
 
 
 def run_alg(data_dir, set_no):
-    k_similarities = 1
-
     vectorized_images = []
     for img_no in range(set_no):
         image = imread("{}/{}.png".format(data_dir, img_no))
         vectorized_images.append(VectorizedImage(image))
 
     similarities = np.array([[image_a.distance(image_b) for image_a in vectorized_images] for image_b in vectorized_images])
-    similarities = [pow(l/min(l), -1) for l in similarities]
 
-    results = [k_similarities * l for l in similarities]
+    # normalize
+    distance_result = [pow(l/min(l), -1) for l in similarities]
+
+    # TODO substitute for real results (this is mock of hu_result and polynomial_result)
+    hu_result = np.ones_like(distance_result)
+    polynomial_result = np.ones_like(distance_result)
+
+    return get_final_rank(distance_result, hu_result, polynomial_result)
+
+
+# The final ranking contains 3 methods - distance, hu and polynomial
+def get_final_rank(_distance_result, _hu_result, _polynomial_result):
+    _distance_result = [K_DISTANCE * l for l in _distance_result]
+    _hu_result = [K_HU * l for l in _hu_result]
+    _polynomial_result = [K_POLYNOMIAL * l for l in _polynomial_result]
+
+    results = np.sum(np.dstack((_distance_result, _hu_result, _polynomial_result)), axis=2)
     results = [np.argsort(l)[::-1] for l in results]
     return results
 
