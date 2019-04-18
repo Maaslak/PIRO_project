@@ -1,55 +1,56 @@
 import sys
-import matplotlib.pyplot as plt
 from matplotlib.image import imread
 import numpy as np
 
-from skimage.transform import probabilistic_hough_line
-from skimage import feature
-from skimage.morphology import disk, dilation
+from skimage.transform import rotate, resize
+from skimage import img_as_ubyte
+
+import cv2
 
 
 def lines_to_vec(lines):
     return np.array([np.array(line[1])-np.array(line[0]) for line in lines])
 
 
-def find_base(image):
-    edges = feature.canny(image, 1)
-    edges = dilation(edges, disk(2))
+def get_normalized_image(image):
 
-    base_lines = np.array(probabilistic_hough_line(edges, threshold=20, line_length=70, line_gap=6))
-    side_lines = probabilistic_hough_line(edges, threshold=20, line_length=15, line_gap=2)
+    image_cv = img_as_ubyte(image)
 
-    base_vectors = lines_to_vec(base_lines)
-    side_vectors = lines_to_vec(side_lines)
+    ret, thresh = cv2.threshold(image_cv, 127, 255, 0)
+    _, contours, hierarchy = cv2.findContours(thresh, 1, 2)
+    cnt = contours[0]
 
-    dot_product = base_vectors @ side_vectors.T  # if 0 then orthogonal
+    rect = cv2.minAreaRect(cnt)
+    center, (w, h), angle = rect
 
-    base_dists = np.array([np.linalg.norm(base_vectors, axis=1)])
-    side_dists = np.array([np.linalg.norm(side_vectors, axis=1)])
+    image = rotate(image, rect[-1], resize=True)
 
-    norm_dot = base_dists.T @ side_dists
-    cos_theta = dot_product / norm_dot
-    cos_theta_thr = 0.02
+    if h > w:
+        image = rotate(image, 90, resize=True)
 
-    orthogonal = cos_theta < cos_theta_thr
+    image_cv = img_as_ubyte(image)
+    ret, thresh = cv2.threshold(image_cv, 127, 255, 0)
+    _, contours, hierarchy = cv2.findContours(thresh, 1, 2)
+    cnt = contours[0]
+    rect = cv2.minAreaRect(cnt)
 
-    bases = np.argsort(base_dists)[::-1]
+    points = cv2.boxPoints(rect)
 
-    bases = list(filter(lambda i: np.count_nonzero(orthogonal[i]) > 1, bases))[0]
+    rounded = np.round(points).astype(np.int)
+    thresh = thresh[rounded[2, 1]: rounded[0, 1], rounded[0, 0]: rounded[2, 0]]
+    thresh = resize(thresh, (200, 200))
 
-    p0, p1 = base_lines[bases[0]]
-    plt.plot((p0[0], p1[0]), (p0[1], p1[1]), linewidth=3)
+    if np.mean(thresh[:100]) > np.mean(thresh[100:]):
+        thresh = rotate(thresh, 180)
 
-    for base_id in bases[:3]:
-         p0, p1 = base_lines[base_id]
-         plt.plot((p0[0], p1[0]), (p0[1], p1[1]), linewidth=3)
+    # plt.imshow(thresh, cmap=plt.cm.gray)
+    # plt.show()
 
-    plt.imshow(edges, cmap=plt.cm.gray)
-    plt.show()
+    return thresh
 
 
 def vectorize_image(image):
-    find_base(image)
+    get_normalized_image(image)
 
 
 def run_alg(data_dir, set_no):
