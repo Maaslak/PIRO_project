@@ -10,6 +10,17 @@ from skimage.feature import canny
 
 import cv2
 
+SHOW_PLT = False
+
+# Weights
+K_DISTANCE = 1
+K_HU = 1
+K_POLYNOMIAL = 1
+
+# How many numbers in every output line?
+N = 5
+
+
 def lines_to_vec(lines):
     return np.array([np.array(line[1])-np.array(line[0]) for line in lines])
 
@@ -71,7 +82,7 @@ class VectorizedImage(object):
         edges = canny(normalized)
         self.points = points_vector(edges)
         plt.imshow(edges, cmap=plt.cm.gray)
-        plt.show()
+        show_plt()
 
     # TODO works only on sums representation, should be extended by hu moments and polynomial values
     def distance(self, image):
@@ -87,13 +98,46 @@ def run_alg(data_dir, set_no):
         vectorized_images.append(VectorizedImage(image))
 
     similarities = np.array([[image_a.distance(image_b) for image_a in vectorized_images] for image_b in vectorized_images])
-    pass
+
+    # normalize
+    distance_result = [pow(l/min(l), -1) for l in similarities]
+
+    # TODO substitute for real results (this is mock of hu_result and polynomial_result)
+    hu_result = np.ones_like(distance_result)
+    polynomial_result = np.ones_like(distance_result)
+
+    weights = [K_DISTANCE, K_HU, K_POLYNOMIAL]
+    methods_results = [distance_result, hu_result, polynomial_result]
+
+    return get_final_rank(list(zip(weights, methods_results)))
 
 
+# The final ranking
+def get_final_rank(components):
+    results = []
+    for component in components:
+        results.append([component[0] * l for l in component[1]])
 
+    _result = np.sum(np.dstack((results[0], results[1])), axis=2)
+    _result = [np.argsort(l)[::-1] for l in _result]
+    return _result
+
+
+def show_plt():
+    if SHOW_PLT:
+        plt.show()
+
+
+def print_results(_results):
+    for r in _results:
+        print(*r[:N], sep=", ")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
+    if len(sys.argv) > 3:
+        SHOW_PLT = int(sys.argv[3])
+    elif len(sys.argv) < 3:
         raise TypeError("missing parameters")
-    run_alg(sys.argv[1], int(sys.argv[2]))
+    result = run_alg(sys.argv[1], int(sys.argv[2]))
+
+    print_results(result)
