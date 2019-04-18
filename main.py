@@ -1,22 +1,25 @@
 import sys
 from matplotlib.image import imread
+import matplotlib.pyplot as plt
 import numpy as np
+from skimage.morphology import closing, square
 
 from skimage.transform import rotate, resize
 from skimage import img_as_ubyte
+from skimage.feature import canny
 
 import cv2
-
 
 def lines_to_vec(lines):
     return np.array([np.array(line[1])-np.array(line[0]) for line in lines])
 
 
-def get_normalized_image(image):
+def image_normalization(image):
 
     image_cv = img_as_ubyte(image)
 
     ret, thresh = cv2.threshold(image_cv, 127, 255, 0)
+    thresh = closing(thresh, square(2))
     _, contours, hierarchy = cv2.findContours(thresh, 1, 2)
     cnt = contours[0]
 
@@ -31,32 +34,63 @@ def get_normalized_image(image):
     image_cv = img_as_ubyte(image)
     ret, thresh = cv2.threshold(image_cv, 127, 255, 0)
     _, contours, hierarchy = cv2.findContours(thresh, 1, 2)
-    cnt = contours[0]
+    cnt = contours[np.argmax([contour.size for contour in contours])]
     rect = cv2.minAreaRect(cnt)
 
     points = cv2.boxPoints(rect)
 
     rounded = np.round(points).astype(np.int)
-    thresh = thresh[rounded[2, 1]: rounded[0, 1], rounded[0, 0]: rounded[2, 0]]
+
+    thresh = thresh[np.min(rounded[..., -1]): np.max(rounded[..., -1]), np.min(rounded[..., 0]): np.max(rounded[..., 0])]
     thresh = resize(thresh, (200, 200))
 
     if np.mean(thresh[:100]) > np.mean(thresh[100:]):
         thresh = rotate(thresh, 180)
 
-    # plt.imshow(thresh, cmap=plt.cm.gray)
-    # plt.show()
-
     return thresh
 
 
-def vectorize_image(image):
-    get_normalized_image(image)
+def points_vector(edges):
+    points = [np.argwhere(column) for column in edges.T]
+    return [np.median(set) if set.size != 0 else 0. for set in points]
+
+
+class VectorizedImage(object):
+
+    # TODO
+    def _hu_moments(self):
+        pass
+
+    # TODO
+    def _polynomial(self):
+        pass
+
+    def __init__(self, image) -> None:
+        super().__init__()
+        normalized = image_normalization(image)[5:-5, 5:-5]
+        edges = canny(normalized)
+        self.points = points_vector(edges)
+        plt.imshow(edges, cmap=plt.cm.gray)
+        plt.show()
+
+    # TODO works only on sums representation, should be extended by hu moments and polynomial values
+    def distance(self, image):
+        reversed_points = image.points[::-1]
+        sums = [a + b for a, b in zip(self.points, reversed_points)]
+        return np.std(sums)
 
 
 def run_alg(data_dir, set_no):
+    vectorized_images = []
     for img_no in range(set_no):
         image = imread("{}/{}.png".format(data_dir, img_no))
-        vectorize_image(image)
+        vectorized_images.append(VectorizedImage(image))
+
+    similarities = np.array([[image_a.distance(image_b) for image_a in vectorized_images] for image_b in vectorized_images])
+    pass
+
+
+
 
 
 if __name__ == "__main__":
