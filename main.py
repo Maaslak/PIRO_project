@@ -121,9 +121,33 @@ def points_vector(edges):
 
 class VectorizedImage(object):
 
-    # TODO
-    def _hu_moments(self):
-        pass
+    def hu_moments(self, image):
+        hu_mixed = {k: self.hu_original.get(k, 0) + image.hu_original.get(k, 0) for k in set(self.hu_original)}
+        sums = [int(self.hu_sum.get(key) - hu_mixed[key]) for key in self.hu_sum]
+        return np.std(sums)
+
+    def get_hu_moments(self, normalized):
+        flipped_image = cv2.flip(normalized, 0)
+        flipped_image = cv2.flip(flipped_image, 1)
+        flipped_edges = canny(flipped_image)
+        np.array(self.edges, dtype=np.uint8)
+
+        im1 = np.array(self.edges, dtype=np.uint8)
+        im2 = np.array(flipped_edges, dtype=np.uint8)
+
+        f, axarr = plt.subplots(1, 2)
+        axarr[0].imshow(im1)
+        axarr[1].imshow(im2)
+        # plt.show()
+        image_hu = cv2.moments(im1)
+        flipped_hu = cv2.moments(im2)
+        # sum_hu = {k: int(image_hu.get(k, 0) + flipped_hu.get(k, 0)) for k in set(image_hu)}
+        print(image_hu)
+        print(flipped_hu)
+        # print(sum_hu)
+        print()
+
+        return image_hu, flipped_hu
 
     # TODO
     def _polynomial(self):
@@ -133,9 +157,12 @@ class VectorizedImage(object):
         super().__init__()
         normalized = image_normalization(image)[5:-5, 5:-5]
         edges = canny(normalized)
+        self.edges = edges
         self.points = points_vector(edges)
         # plt.imshow(edges, cmap=plt.cm.gray)
         # show_plt()
+
+        self.hu_original, self.hu_flipped, self.hu_sum = self.get_hu_moments(normalized)
 
     # TODO works only on sums representation, should be extended by hu moments and polynomial values
     def distance(self, image):
@@ -152,6 +179,7 @@ def run_alg(data_dir, set_no):
 
     similarities = np.array(
         [[image_a.distance(image_b) for image_a in vectorized_images] for image_b in vectorized_images])
+    hu = np.array([[image_a.hu_moments(image_b) for image_a in vectorized_images] for image_b in vectorized_images])
 
     # normalize
     distance_result = [pow(l / min(l), -1) for l in similarities]
