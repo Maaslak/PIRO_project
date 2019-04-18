@@ -121,12 +121,14 @@ def points_vector(edges):
     points = [np.argwhere(column) for column in edges.T]
     return [np.min(set) if set.size != 0 else 0. for set in points]
 
+
 class VectorizedImage(object):
 
     def hu_moments(self, image):
-        # m00 m20 m30 mu20
-        similars = [1 if HU_TH < self.hu_flipped.get(key) / image.hu_original[key] < 1 + (1-HU_TH) else 0 for key in self.hu_original]
-        return sum(similars)
+        if self == image:
+            return 0
+        similar = [1 if HU_TH < self.hu_flipped.get(key) / image.hu_original[key] < 1 + (1-HU_TH) else 0 for key in self.hu_original]
+        return sum(similar)
 
     def get_hu_moments(self, normalized):
         flipped_image = cv2.flip(normalized, 0)
@@ -137,17 +139,8 @@ class VectorizedImage(object):
         im1 = np.array(self.edges, dtype=np.uint8)
         im2 = np.array(flipped_edges, dtype=np.uint8)
 
-        f, axarr = plt.subplots(1, 2)
-        axarr[0].imshow(im1)
-        axarr[1].imshow(im2)
-        # plt.show()
         image_hu = cv2.moments(im1)
         flipped_hu = cv2.moments(im2)
-        # sum_hu = {k: int(image_hu.get(k, 0) + flipped_hu.get(k, 0)) for k in set(image_hu)}
-        print(image_hu)
-        print(flipped_hu)
-        # print(sum_hu)
-        print()
 
         return image_hu, flipped_hu
 
@@ -166,7 +159,7 @@ class VectorizedImage(object):
 
         self.hu_original, self.hu_flipped = self.get_hu_moments(normalized)
 
-    # TODO works only on sums representation, should be extended by hu moments and polynomial values
+    # TODO works only on sums representation and hu moments, should be extended by polynomial values
     def distance(self, image):
         reversed_points = image.points[::-1]
         sums = [a + b for a, b in zip(self.points, reversed_points)]
@@ -186,12 +179,13 @@ def run_alg(data_dir, set_no):
     # normalize
     distance_result = [pow(l / min(l), -1) for l in similarities]
 
-    # TODO substitute for real results (this is mock of hu_result and polynomial_result)
-    hu_result = np.ones_like(distance_result)
+    # TODO substitute for real results (this is mock of polynomial_result)
+    hu_result = [l/max(l) for l in hu]
     polynomial_result = np.ones_like(distance_result)
 
-    weights = [K_DISTANCE, K_HU, K_POLYNOMIAL]
-    methods_results = [distance_result, hu_result, polynomial_result]
+    # TODO add polynomial
+    weights = [K_DISTANCE, K_HU]#, K_POLYNOMIAL]
+    methods_results = [distance_result, hu_result]#, polynomial_result]
 
     return get_final_rank(list(zip(weights, methods_results)))
 
