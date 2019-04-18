@@ -2,6 +2,7 @@ import sys
 from matplotlib.image import imread
 import matplotlib.pyplot as plt
 import numpy as np
+from skimage.morphology import closing, square
 
 from skimage.transform import rotate, resize
 from skimage import img_as_ubyte
@@ -18,6 +19,7 @@ def image_normalization(image):
     image_cv = img_as_ubyte(image)
 
     ret, thresh = cv2.threshold(image_cv, 127, 255, 0)
+    thresh = closing(thresh, square(2))
     _, contours, hierarchy = cv2.findContours(thresh, 1, 2)
     cnt = contours[0]
 
@@ -32,13 +34,14 @@ def image_normalization(image):
     image_cv = img_as_ubyte(image)
     ret, thresh = cv2.threshold(image_cv, 127, 255, 0)
     _, contours, hierarchy = cv2.findContours(thresh, 1, 2)
-    cnt = contours[0]
+    cnt = contours[np.argmax([contour.size for contour in contours])]
     rect = cv2.minAreaRect(cnt)
 
     points = cv2.boxPoints(rect)
 
     rounded = np.round(points).astype(np.int)
-    thresh = thresh[rounded[2, 1]: rounded[0, 1], rounded[0, 0]: rounded[2, 0]]
+
+    thresh = thresh[np.min(rounded[..., -1]): np.max(rounded[..., -1]), np.min(rounded[..., 0]): np.max(rounded[..., 0])]
     thresh = resize(thresh, (200, 200))
 
     if np.mean(thresh[:100]) > np.mean(thresh[100:]):
@@ -67,8 +70,8 @@ class VectorizedImage(object):
         normalized = image_normalization(image)[5:-5, 5:-5]
         edges = canny(normalized)
         self.points = points_vector(edges)
-        # plt.imshow(edges, cmap=plt.cm.gray)
-        # plt.show()
+        plt.imshow(edges, cmap=plt.cm.gray)
+        plt.show()
 
     # TODO works only on sums representation, should be extended by hu moments and polynomial values
     def distance(self, image):
@@ -82,6 +85,10 @@ def run_alg(data_dir, set_no):
     for img_no in range(set_no):
         image = imread("{}/{}.png".format(data_dir, img_no))
         vectorized_images.append(VectorizedImage(image))
+
+    similarities = np.array([[image_a.distance(image_b) for image_a in vectorized_images] for image_b in vectorized_images])
+    pass
+
 
 
 
