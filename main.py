@@ -20,6 +20,9 @@ K_POLYNOMIAL = 1
 # How many numbers in every output line?
 N = 5
 
+# min hum moment similarity
+HU_TH = 0.8
+
 
 def lines_to_vec(lines):
     return np.array([np.array(line[1])-np.array(line[0]) for line in lines])
@@ -65,13 +68,12 @@ def points_vector(edges):
     points = [np.argwhere(column) for column in edges.T]
     return [np.median(set) if set.size != 0 else 0. for set in points]
 
-
 class VectorizedImage(object):
 
     def hu_moments(self, image):
-        hu_mixed = {k: self.hu_original.get(k, 0) + image.hu_original.get(k, 0) for k in set(self.hu_original)}
-        sums = [int(self.hu_sum.get(key) - hu_mixed[key]) for key in self.hu_sum]
-        return np.std(sums)
+        # m00 m20 m30 mu20
+        similars = [1 if HU_TH < self.hu_flipped.get(key) / image.hu_original[key] < 1 + (1-HU_TH) else 0 for key in self.hu_original]
+        return sum(similars)
 
     def get_hu_moments(self, normalized):
         flipped_image = cv2.flip(normalized, 0)
@@ -102,14 +104,14 @@ class VectorizedImage(object):
 
     def __init__(self, image) -> None:
         super().__init__()
-        normalized = image_normalization(image)[5:-5, 5:-5]
+        normalized = image_normalization(image)
         edges = canny(normalized)
         self.edges = edges
         self.points = points_vector(edges)
         plt.imshow(edges, cmap=plt.cm.gray)
         show_plt()
 
-        self.hu_original, self.hu_flipped, self.hu_sum = self.get_hu_moments(normalized)
+        self.hu_original, self.hu_flipped = self.get_hu_moments(normalized)
 
     # TODO works only on sums representation, should be extended by hu moments and polynomial values
     def distance(self, image):
