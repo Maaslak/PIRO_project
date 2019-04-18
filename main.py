@@ -10,7 +10,7 @@ from skimage.feature import canny
 
 import cv2
 
-SHOW_PLT = True
+SHOW_PLT = False
 
 
 def lines_to_vec(lines):
@@ -84,14 +84,19 @@ class VectorizedImage(object):
 
 
 def run_alg(data_dir, set_no):
+    k_similarities = 1
+
     vectorized_images = []
     for img_no in range(set_no):
         image = imread("{}/{}.png".format(data_dir, img_no))
         vectorized_images.append(VectorizedImage(image))
 
     similarities = np.array([[image_a.distance(image_b) for image_a in vectorized_images] for image_b in vectorized_images])
-    print_results(similarities)
-    pass
+    similarities = [pow(l/min(l), -1) for l in similarities]
+
+    results = [k_similarities * l for l in similarities]
+    results = [np.argsort(l)[::-1] for l in results]
+    return results
 
 
 def show_plt():
@@ -99,9 +104,9 @@ def show_plt():
         plt.show()
 
 
-def print_results(similarities, n=5):
-    for candidates in similarities:
-        print(*np.argsort(candidates)[:n], sep=", ")
+def print_results(_results, n=5):
+    for r in _results:
+        print(*r[:n], sep=", ")
 
 
 if __name__ == "__main__":
@@ -109,4 +114,6 @@ if __name__ == "__main__":
         SHOW_PLT = int(sys.argv[3])
     elif len(sys.argv) < 3:
         raise TypeError("missing parameters")
-    run_alg(sys.argv[1], int(sys.argv[2]))
+    result = run_alg(sys.argv[1], int(sys.argv[2]))
+
+    print_results(result)
