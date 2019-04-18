@@ -10,6 +10,9 @@ from skimage.feature import canny
 
 import cv2
 
+SHOW_PLT = True
+
+
 def lines_to_vec(lines):
     return np.array([np.array(line[1])-np.array(line[0]) for line in lines])
 
@@ -71,7 +74,7 @@ class VectorizedImage(object):
         edges = canny(normalized)
         self.points = points_vector(edges)
         plt.imshow(edges, cmap=plt.cm.gray)
-        plt.show()
+        show_plt()
 
     # TODO works only on sums representation, should be extended by hu moments and polynomial values
     def distance(self, image):
@@ -87,13 +90,23 @@ def run_alg(data_dir, set_no):
         vectorized_images.append(VectorizedImage(image))
 
     similarities = np.array([[image_a.distance(image_b) for image_a in vectorized_images] for image_b in vectorized_images])
+    print_results(similarities)
     pass
 
 
+def show_plt():
+    if SHOW_PLT:
+        plt.show()
 
+
+def print_results(similarities, n=5):
+    for candidates in similarities:
+        print(*np.argsort(candidates)[:n], sep=", ")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
+    if len(sys.argv) > 3:
+        SHOW_PLT = int(sys.argv[3])
+    elif len(sys.argv) < 3:
         raise TypeError("missing parameters")
     run_alg(sys.argv[1], int(sys.argv[2]))
