@@ -17,6 +17,9 @@ K_DISTANCE = 1
 K_HU = 1
 K_POLYNOMIAL = 1
 
+# How many numbers in every output line?
+N = 5
+
 
 def lines_to_vec(lines):
     return np.array([np.array(line[1])-np.array(line[0]) for line in lines])
@@ -122,9 +125,9 @@ def show_plt():
         plt.show()
 
 
-def print_results(_results, n=5):
+def print_results(_results):
     for r in _results:
-        print(*r[:n], sep=", ")
+        print(*r[:N], sep=", ")
 
 
 if __name__ == "__main__":
