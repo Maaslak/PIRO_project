@@ -106,18 +106,21 @@ def run_alg(data_dir, set_no):
     hu_result = np.ones_like(distance_result)
     polynomial_result = np.ones_like(distance_result)
 
-    return get_final_rank(distance_result, hu_result, polynomial_result)
+    weights = [K_DISTANCE, K_HU, K_POLYNOMIAL]
+    methods_results = [distance_result, hu_result, polynomial_result]
+
+    return get_final_rank(list(zip(weights, methods_results)))
 
 
-# The final ranking contains 3 methods - distance, hu and polynomial
-def get_final_rank(_distance_result, _hu_result, _polynomial_result):
-    _distance_result = [K_DISTANCE * l for l in _distance_result]
-    _hu_result = [K_HU * l for l in _hu_result]
-    _polynomial_result = [K_POLYNOMIAL * l for l in _polynomial_result]
+# The final ranking
+def get_final_rank(components):
+    results = []
+    for component in components:
+        results.append([component[0] * l for l in component[1]])
 
-    results = np.sum(np.dstack((_distance_result, _hu_result, _polynomial_result)), axis=2)
-    results = [np.argsort(l)[::-1] for l in results]
-    return results
+    _result = np.sum(np.dstack((results[0], results[1])), axis=2)
+    _result = [np.argsort(l)[::-1] for l in _result]
+    return _result
 
 
 def show_plt():
