@@ -21,7 +21,7 @@ K_POLYNOMIAL = 1
 N = 5
 
 # min hum moment similarity
-HU_TH = 0.8
+HU_TH = 0.5
 
 
 def lines_to_vec(lines):
