@@ -2,15 +2,16 @@ import sys
 from matplotlib.image import imread
 import matplotlib.pyplot as plt
 import numpy as np
-from skimage.morphology import closing, square
+from skimage.morphology import closing, square, convex_hull_image
 
-from skimage.transform import rotate, resize
+from skimage.transform import rotate, resize, probabilistic_hough_line, hough_line, hough_line_peaks
 from skimage import img_as_ubyte
-from skimage.feature import canny
+from skimage.feature import canny, corner_peaks, corner_harris
 
 import cv2
+from skimage.util import pad
 
-SHOW_PLT = False
+SHOW_PLT = True
 
 # Weights
 K_DISTANCE = 1
@@ -55,8 +56,32 @@ def image_normalization(image):
     thresh = thresh[np.min(rounded[..., -1]): np.max(rounded[..., -1]), np.min(rounded[..., 0]): np.max(rounded[..., 0])]
     thresh = resize(thresh, (200, 200))
 
-    if np.mean(thresh[:100]) > np.mean(thresh[100:]):
-        thresh = rotate(thresh, 180)
+    chull = convex_hull_image(thresh)
+    diff = chull - thresh
+    angles = [0, 90, 180, 270]
+    parts = [diff[:100], diff[:, 100:], diff[100:], diff[:, :100]]
+    angle = angles[np.argmax([np.mean(part) for part in parts])]
+
+    thresh = pad(rotate(thresh, angle), 5, mode='constant')
+
+
+    # if np.mean(thresh[:100]) > np.mean(thresh[100:]):
+    #     thresh = rotate(thresh, 180)
+
+    plt.imshow(thresh, cmap=plt.cm.gray)
+
+    lines = np.array(probabilistic_hough_line(canny(thresh), line_length=50))
+
+    left_line = lines[np.argmin(np.sum(lines[..., 0], axis=1))]
+    right_line = lines[np.argmax(np.sum(lines[..., 0], axis=1))]
+
+    bottom_line = lines[np.argmax(np.sum(lines[..., 1], axis=1))]
+
+    for line in [left_line, right_line, bottom_line]:
+        p0, p1 = line
+        plt.plot((p0[0], p1[0]), (p0[1], p1[1]))
+
+    show_plt()
 
     return thresh
 
@@ -78,11 +103,11 @@ class VectorizedImage(object):
 
     def __init__(self, image) -> None:
         super().__init__()
-        normalized = image_normalization(image)[5:-5, 5:-5]
+        normalized = image_normalization(image) [5:-5, 5:-5]
         edges = canny(normalized)
         self.points = points_vector(edges)
-        plt.imshow(edges, cmap=plt.cm.gray)
-        show_plt()
+        #plt.imshow(edges, cmap=plt.cm.gray)
+        #show_plt()
 
     # TODO works only on sums representation, should be extended by hu moments and polynomial values
     def distance(self, image):
