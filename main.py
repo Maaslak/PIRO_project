@@ -1,15 +1,13 @@
 import sys
-from matplotlib.image import imread
-import matplotlib.pyplot as plt
-import numpy as np
-from skimage.morphology import closing, square, convex_hull_image
-
-from skimage.transform import rotate, resize, probabilistic_hough_line, hough_line, hough_line_peaks, \
-    ProjectiveTransform, warp
-from skimage import img_as_ubyte
-from skimage.feature import canny, corner_peaks, corner_harris
 
 import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.image import imread
+from skimage import img_as_ubyte
+from skimage.feature import canny
+from skimage.morphology import closing, square, convex_hull_image
+from skimage.transform import rotate, resize, probabilistic_hough_line, ProjectiveTransform, warp
 from skimage.util import pad
 
 SHOW_PLT = False
@@ -24,19 +22,19 @@ N = 5
 
 
 def lines_to_vec(lines):
-    return np.array([np.array(line[1])-np.array(line[0]) for line in lines])
+    return np.array([np.array(line[1]) - np.array(line[0]) for line in lines])
 
 
 def line_intersection(line1, line2):
     xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
-    ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1]) #Typo was here
+    ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])  # Typo was here
 
     def det(a, b):
         return a[0] * b[1] - a[1] * b[0]
 
     div = det(xdiff, ydiff)
     if div == 0:
-       raise Exception('lines do not intersect')
+        raise Exception('lines do not intersect')
 
     d = (det(*line1), det(*line2))
     x = int(det(d, xdiff) / div)
@@ -45,7 +43,6 @@ def line_intersection(line1, line2):
 
 
 def image_normalization(image):
-
     image_cv = img_as_ubyte(image)
 
     ret, thresh = cv2.threshold(image_cv, 127, 255, 0)
@@ -71,7 +68,8 @@ def image_normalization(image):
 
     rounded = np.round(points).astype(np.int)
 
-    thresh = thresh[np.min(rounded[..., -1]): np.max(rounded[..., -1]), np.min(rounded[..., 0]): np.max(rounded[..., 0])]
+    thresh = thresh[np.min(rounded[..., -1]): np.max(rounded[..., -1]),
+             np.min(rounded[..., 0]): np.max(rounded[..., 0])]
     thresh = resize(thresh, (200, 200))
 
     chull = convex_hull_image(thresh)
@@ -85,23 +83,27 @@ def image_normalization(image):
 
     lines = np.array(probabilistic_hough_line(canny(thresh), line_length=50))
 
-    left_line = lines[np.argmin(np.sum(lines[..., 0], axis=1))]
-    right_line = lines[np.argmax(np.sum(lines[..., 0], axis=1))]
+    left_line = lines[np.argmin(np.linalg.norm(lines[..., 0], axis=1))]
+    right_line = lines[np.argmax(np.linalg.norm(lines[..., 0], axis=1))]
 
-    bottom_line = lines[np.argmax(np.sum(lines[..., 1], axis=1))]
+    bottom_line = lines[np.argmax(np.linalg.norm(lines[..., 1], axis=1))]
     up_line = [[0., 0.], [199., 0.]]
 
     line_pairs = [(left_line, bottom_line), (bottom_line, right_line),
                   (right_line, up_line), (up_line, left_line)]
 
-    dst = np.array([line_intersection(*pair) for pair in line_pairs])
-    src = np.array([[0, 200], [200, 200], [200, 0], [0, 0]])
+    try:
+        dst = np.array([line_intersection(*pair) for pair in line_pairs])
+        src = np.array([[0, 200], [200, 200], [200, 0], [0, 0]])
 
-    tform3 = ProjectiveTransform()
-    tform3.estimate(src, dst)
-    warped = warp(thresh, tform3)[padding:-3 * padding, padding:- 3 * padding]
+        tform3 = ProjectiveTransform()
+        tform3.estimate(src, dst)
+        thresh = warp(thresh, tform3)
+    except:
+        pass
+    thresh = thresh[padding:-3 * padding, padding:- 3 * padding]
 
-    plt.imshow(warped, cmap=plt.cm.gray)
+    plt.imshow(thresh, cmap=plt.cm.gray)
 
     # for line in [left_line, right_line, bottom_line]:
     #     p0, p1 = line
@@ -109,7 +111,7 @@ def image_normalization(image):
 
     show_plt()
 
-    return warped
+    return thresh
 
 
 def points_vector(edges):
@@ -129,11 +131,11 @@ class VectorizedImage(object):
 
     def __init__(self, image) -> None:
         super().__init__()
-        normalized = image_normalization(image) [5:-5, 5:-5]
+        normalized = image_normalization(image)[5:-5, 5:-5]
         edges = canny(normalized)
         self.points = points_vector(edges)
-        #plt.imshow(edges, cmap=plt.cm.gray)
-        #show_plt()
+        # plt.imshow(edges, cmap=plt.cm.gray)
+        # show_plt()
 
     # TODO works only on sums representation, should be extended by hu moments and polynomial values
     def distance(self, image):
@@ -148,10 +150,11 @@ def run_alg(data_dir, set_no):
         image = imread("{}/{}.png".format(data_dir, img_no))
         vectorized_images.append(VectorizedImage(image))
 
-    similarities = np.array([[image_a.distance(image_b) for image_a in vectorized_images] for image_b in vectorized_images])
+    similarities = np.array(
+        [[image_a.distance(image_b) for image_a in vectorized_images] for image_b in vectorized_images])
 
     # normalize
-    distance_result = [pow(l/min(l), -1) for l in similarities]
+    distance_result = [pow(l / min(l), -1) for l in similarities]
 
     # TODO substitute for real results (this is mock of hu_result and polynomial_result)
     hu_result = np.ones_like(distance_result)
