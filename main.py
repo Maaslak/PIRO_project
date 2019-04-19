@@ -14,14 +14,14 @@ SHOW_PLT = False
 
 # Weights
 K_DISTANCE = 1
-K_HU = 1
+K_HU = 0.9
 K_POLYNOMIAL = 1
 
 # How many numbers in every output line?
 N = 5
 
 # min hum moment similarity
-HU_TH = 0.5
+HU_TH = 0.4
 
 
 def lines_to_vec(lines):
@@ -150,7 +150,7 @@ class VectorizedImage(object):
 
     def __init__(self, image) -> None:
         super().__init__()
-        normalized = image_normalization(image)
+        normalized = image_normalization(image)[5:-5, 5:-5]
         edges = canny(normalized)
         self.edges = edges
         self.points = points_vector(edges)
