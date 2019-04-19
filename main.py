@@ -14,14 +14,11 @@ SHOW_PLT = False
 
 # Weights
 K_DISTANCE = 1
-K_HU = 0.9
+K_HU = 1
 K_POLYNOMIAL = 1
 
 # How many numbers in every output line?
 N = 5
-
-# min hum moment similarity
-HU_TH = 0.4
 
 
 def lines_to_vec(lines):
@@ -124,25 +121,9 @@ def points_vector(edges):
 
 class VectorizedImage(object):
 
-    def hu_moments(self, image):
-        if self == image:
-            return 0
-        similar = [0 if image.hu_original[key] == 0 else (1 if HU_TH < self.hu_flipped.get(key) / image.hu_original[key] < 1 + (1-HU_TH) else 0) for key in self.hu_original]
-        return sum(similar)
-
-    def get_hu_moments(self, normalized):
-        flipped_image = cv2.flip(normalized, 0)
-        flipped_image = cv2.flip(flipped_image, 1)
-        flipped_edges = canny(flipped_image)
-        np.array(self.edges, dtype=np.uint8)
-
-        im1 = np.array(self.edges, dtype=np.uint8)
-        im2 = np.array(flipped_edges, dtype=np.uint8)
-
-        image_hu = cv2.moments(im1)
-        flipped_hu = cv2.moments(im2)
-
-        return image_hu, flipped_hu
+    # TODO
+    def _hu_moments(self):
+        pass
 
     # TODO
     def _polynomial(self):
@@ -152,14 +133,11 @@ class VectorizedImage(object):
         super().__init__()
         normalized = image_normalization(image)[5:-5, 5:-5]
         edges = canny(normalized)
-        self.edges = edges
         self.points = points_vector(edges)
         # plt.imshow(edges, cmap=plt.cm.gray)
         # show_plt()
 
-        self.hu_original, self.hu_flipped = self.get_hu_moments(normalized)
-
-    # TODO works only on sums representation and hu moments, should be extended by polynomial values
+    # TODO works only on sums representation, should be extended by hu moments and polynomial values
     def distance(self, image):
         reversed_points = image.points[::-1]
         sums = [a + b for a, b in zip(self.points, reversed_points)]
@@ -174,18 +152,16 @@ def run_alg(data_dir, set_no):
 
     similarities = np.array(
         [[image_a.distance(image_b) for image_a in vectorized_images] for image_b in vectorized_images])
-    hu = np.array([[image_a.hu_moments(image_b) for image_a in vectorized_images] for image_b in vectorized_images])
 
     # normalize
     distance_result = [pow(l / min(l), -1) for l in similarities]
 
-    # TODO substitute for real results (this is mock of polynomial_result)
-    hu_result = [l/max(l) for l in hu]
+    # TODO substitute for real results (this is mock of hu_result and polynomial_result)
+    hu_result = np.ones_like(distance_result)
     polynomial_result = np.ones_like(distance_result)
 
-    # TODO add polynomial
-    weights = [K_DISTANCE, K_HU]#, K_POLYNOMIAL]
-    methods_results = [distance_result, hu_result]#, polynomial_result]
+    weights = [K_DISTANCE, K_HU, K_POLYNOMIAL]
+    methods_results = [distance_result, hu_result, polynomial_result]
 
     return get_final_rank(list(zip(weights, methods_results)))
 
