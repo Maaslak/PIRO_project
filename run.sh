@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-sudo apt-get install python3-venv
+#sudo apt-get install python3-venv
 python3 -m venv ./venv
 chmod 755 venv/bin/activate
 ./venv/bin/activate
