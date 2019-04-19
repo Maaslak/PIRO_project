@@ -127,7 +127,7 @@ class VectorizedImage(object):
     def hu_moments(self, image):
         if self == image:
             return 0
-        similar = [1 if HU_TH < self.hu_flipped.get(key) / image.hu_original[key] < 1 + (1-HU_TH) else 0 for key in self.hu_original]
+        similar = [0 if image.hu_original[key] == 0 else (1 if HU_TH < self.hu_flipped.get(key) / image.hu_original[key] < 1 + (1-HU_TH) else 0) for key in self.hu_original]
         return sum(similar)
 
     def get_hu_moments(self, normalized):
