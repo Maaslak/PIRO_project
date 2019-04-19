@@ -21,7 +21,7 @@ K_POLYNOMIAL = 1
 N = 5
 
 # min hum moment similarity
-HU_TH = 0.4
+HU_TH = 0.9
 
 
 def lines_to_vec(lines):
@@ -80,11 +80,34 @@ class VectorizedImage(object):
     def get_hu_moments(self, normalized):
         flipped_image = cv2.flip(normalized, 0)
         flipped_image = cv2.flip(flipped_image, 1)
+        flipped_image = np.array(flipped_image, dtype=np.uint8)
         flipped_edges = canny(flipped_image)
         np.array(self.edges, dtype=np.uint8)
 
-        im1 = np.array(self.edges, dtype=np.uint8)
-        im2 = np.array(flipped_edges, dtype=np.uint8)
+        black_pixels = np.array(np.where(normalized == 0))
+        white_pixels = np.array(np.where(normalized == 1))
+        last_black_pixel = black_pixels[:, -1]
+        first_white_pixel = white_pixels[:, 0]
+
+        im1 = np.array(normalized, dtype=np.uint8)
+        im1 = im1[first_white_pixel[0]:last_black_pixel[0]][0::]
+
+        black_pixels = np.array(np.where(flipped_image == 0))
+        white_pixels = np.array(np.where(flipped_image == 1))
+        last_white_pixel = white_pixels[:, -1]
+        first_black_pixel = black_pixels[:, 0]
+
+        im2 = np.array(flipped_image, dtype=np.uint8)
+        im2 = im2[first_black_pixel[0]:last_white_pixel[0]][0::]
+        im2 = cv2.bitwise_not(im2)
+
+        fig = plt.figure(figsize=(10, 10))
+        fig.add_subplot(1, 2, 1)
+
+        plt.imshow(im1, cmap=plt.cm.gray)
+        fig.add_subplot(1, 2, 2)
+        plt.imshow(im2, cmap=plt.cm.gray)
+        plt.show()
 
         image_hu = cv2.moments(im1)
         flipped_hu = cv2.moments(im2)
@@ -101,8 +124,8 @@ class VectorizedImage(object):
         edges = canny(normalized)
         self.edges = edges
         self.points = points_vector(edges)
-        plt.imshow(edges, cmap=plt.cm.gray)
-        show_plt()
+        # plt.imshow(edges, cmap=plt.cm.gray)
+        # show_plt()
 
         self.hu_original, self.hu_flipped = self.get_hu_moments(normalized)
 
